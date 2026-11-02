@@ -1,0 +1,11 @@
+[
+  {
+    "tag_name": "v0.5.29-build.36",
+    "draft": false,
+    "published_at": "2026-11-02T10:00:00Z",
+    "assets": [
+      { "name": "TaskTwig-Android-0.5.29+36.apk", "size": 56000000 },
+      { "name": "TaskTwig-Setup-0.5.29+36.exe", "size": 24000000 }
+    ]
+  }
+]
