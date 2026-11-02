@@ -1,6 +1,7 @@
 name: Refresh website on public release
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
