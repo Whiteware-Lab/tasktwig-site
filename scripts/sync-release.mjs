@@ -36,14 +36,16 @@ const assetNames = {
 };
 const selected = {};
 
-for (const release of releases.filter((item) => !item.draft).sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))) {
+for (const release of releases.filter((item) => !item.draft && !item.prerelease)) {
   for (const [platform, pattern] of Object.entries(assetNames)) {
-    if (selected[platform]) continue;
-    const asset = release.assets?.find((item) => pattern.test(item.name) && item.size > 0);
-    if (!asset) continue;
-    selected[platform] = { asset, release };
+    for (const asset of release.assets ?? []) {
+      const version = pattern.exec(asset.name);
+      if (!version || asset.size <= 0 || (asset.state && asset.state !== 'uploaded')) continue;
+      const build = Number(version[2]);
+      if (!Number.isSafeInteger(build) || build <= (selected[platform]?.build ?? 0)) continue;
+      selected[platform] = { asset, release, version: version[1], build };
+    }
   }
-  if (selected.android && selected.windows) break;
 }
 
 function platformCard(platform, title, symbol, emptyMessage) {
@@ -51,9 +53,8 @@ function platformCard(platform, title, symbol, emptyMessage) {
   if (!match) {
     return `<div class="platform-card" id="${platform}-platform"><span class="platform-icon" aria-hidden="true">${symbol}</span><span><strong>${title}</strong><small>${emptyMessage}</small></span><span class="platform-badge">PRESTO</span></div>`;
   }
-  const { asset, release } = match;
-  const version = asset.name.match(assetNames[platform]);
-  const label = `${version[1]} · build ${version[2]}`;
+  const { asset, release, version, build } = match;
+  const label = `${version} · build ${build}`;
   const size = `${(asset.size / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
   const url = `https://github.com/${repository}/releases/download/${encodeURIComponent(release.tag_name)}/${encodeURIComponent(asset.name)}`;
   return `<a class="platform-card available" id="${platform}-platform" href="${url}"><span class="platform-icon" aria-hidden="true">${symbol}</span><span><strong>${title}</strong><small>${label} · ${size}</small></span><span class="platform-arrow" aria-hidden="true">↓</span></a>`;
@@ -70,4 +71,8 @@ const downloadCards = [
 ].join('\n              ');
 
 await writeFile(pagePath, `${homepage.slice(0, first + start.length)}\n              ${downloadCards}\n              ${homepage.slice(last)}`);
+const latest = Object.fromEntries(
+  Object.entries(selected).map(([platform, { version, build }]) => [platform, { version, build }]),
+);
+await writeFile(resolve(root, 'dist/latest.json'), `${JSON.stringify(latest, null, 2)}\n`);
 console.log(`Download disponibili: ${Object.keys(selected).join(', ') || 'nessuno'}`);
